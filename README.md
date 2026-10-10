@@ -2,7 +2,7 @@
 
 Project website for **Guidance under Shift: Deployment-Aligned Semantic Interfaces for Vision–Language–Action Policies**.
 
-**Website:** https://simaqie.github.io/got-vla/
+**Website:** https://got-vla.github.io/
 
 The manuscript currently lists Anonymous Authors. This repository contains the static project page, figures, compiled paper with appendix, and real-robot demonstration videos. The page follows a simple, linear paper layout: title, teaser, abstract, approach, experiments, and resources. It does not contain the training implementation.
 
@@ -10,7 +10,7 @@ The manuscript currently lists Anonymous Authors. This repository contains the s
 
 Run `python -m http.server 8765` from this directory, then open http://localhost:8765/.
 
-No build step, external JavaScript libraries, or remotely hosted fonts are required. GitHub Pages serves the root of the `main` branch. For an independent team-owned address, the repository must be transferred to the `got-vla` organization and named `got-vla.github.io`; its final URL will be https://got-vla.github.io/. The currently listed personal address is the initial preview deployment.
+No build step, external JavaScript libraries, or remotely hosted fonts are required. GitHub Pages serves the root of the `main` branch in the project organization’s `got-vla.github.io` repository.
 
 ## Content sources
 
