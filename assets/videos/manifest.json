@@ -1,0 +1,72 @@
+[
+  {
+    "id": "s1",
+    "source": "S1_Base_reference_layout.mp4",
+    "source_duration_seconds": 156.0,
+    "display_duration_seconds": 78.0,
+    "speed": 2,
+    "time_range": "entire recording",
+    "crop": "640x400 head-camera view; text panel removed",
+    "original": "assets/videos/s1-full.mp4"
+  },
+  {
+    "id": "s2",
+    "source": "S2_Object_new_pen_paper_appearance.mp4",
+    "source_duration_seconds": 154.0,
+    "display_duration_seconds": 77.0,
+    "speed": 2,
+    "time_range": "entire recording",
+    "crop": "640x400 head-camera view; text panel removed",
+    "original": "assets/videos/s2-full.mp4"
+  },
+  {
+    "id": "s3",
+    "source": "S3_Category_glue_stick_and_can.mp4",
+    "source_duration_seconds": 152.0,
+    "display_duration_seconds": 76.0,
+    "speed": 2,
+    "time_range": "entire recording",
+    "crop": "640x400 head-camera view; text panel removed",
+    "original": "assets/videos/s3-full.mp4"
+  },
+  {
+    "id": "s4",
+    "source": "S4_Multi_three_sheets_paper.mp4",
+    "source_duration_seconds": 155.0,
+    "display_duration_seconds": 77.5,
+    "speed": 2,
+    "time_range": "entire recording",
+    "crop": "640x400 head-camera view; text panel removed",
+    "original": "assets/videos/s4-full.mp4"
+  },
+  {
+    "id": "s5",
+    "source": "S5_Moved_items_displaced_rotated.mp4",
+    "source_duration_seconds": 156.0,
+    "display_duration_seconds": 78.0,
+    "speed": 2,
+    "time_range": "entire recording",
+    "crop": "640x400 head-camera view; text panel removed",
+    "original": "assets/videos/s5-full.mp4"
+  },
+  {
+    "id": "s6",
+    "source": "S6_LaptopDone_resume_laptop_closed.mp4",
+    "source_duration_seconds": 88.0,
+    "display_duration_seconds": 44.0,
+    "speed": 2,
+    "time_range": "entire recording",
+    "crop": "640x400 head-camera view; text panel removed",
+    "original": "assets/videos/s6-full.mp4"
+  },
+  {
+    "id": "s7",
+    "source": "S7_PaperDone_resume_paper_in_bin.mp4",
+    "source_duration_seconds": 87.0,
+    "display_duration_seconds": 43.5,
+    "speed": 2,
+    "time_range": "entire recording",
+    "crop": "640x400 head-camera view; text panel removed",
+    "original": "assets/videos/s7-full.mp4"
+  }
+]
