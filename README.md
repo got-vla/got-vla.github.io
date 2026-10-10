@@ -4,7 +4,7 @@ Project website for **Guidance under Shift: Deployment-Aligned Semantic Interfac
 
 **Website:** https://got-vla.github.io/
 
-The manuscript currently lists Anonymous Authors. This repository contains the static project page, figures, compiled paper with appendix, and real-robot demonstration videos. The page follows a simple, linear paper layout: title, teaser, abstract, approach, experiments, and resources. It does not contain the training implementation.
+The manuscript currently lists Anonymous Authors. This repository contains the static project page, figures, compiled paper with appendix, and real-robot demonstration videos. The page follows a simple, linear paper layout: title, teaser, abstract, theoretical motivation, approach, experiments, discussion, and resources. It does not contain the training implementation.
 
 ## Local preview
 
@@ -41,3 +41,7 @@ The revised layout follows [CoT-VLA](https://cot-vla.github.io/): a white backgr
 ## Release status
 
 The paper states that training code and CoT-annotated data will be released. The page does not imply that the local reference implementation is already public. The anonymous BibTeX entry should be updated when public author and paper metadata become available.
+
+## Expanded paper content
+
+The page includes the flow-matching risk comparison and transfer bound (Section 3), field interfaces and three-stage training (Section 4), asynchronous source-time semantics (Appendix F), downstream fine-tuning ablations and complete missing-guidance tests (Section 5.1), real-robot subtask scores (Section 5.2), and the piecewise-collection example (Appendix D). Equations use shortened notation defined beside them. Observed rollout ages are distinguished from training age ranges.

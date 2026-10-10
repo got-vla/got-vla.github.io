@@ -40,12 +40,52 @@
     <div class="container narrow"><h2>Abstract</h2><p>Explicit chain-of-thought (CoT) can improve vision–language–action (VLA) policies by exposing task progress and spatial intent, but guidance available during training is often more reliable and temporally aligned than online predictions at deployment, which may be incorrect, missing, or outdated. This mismatch can make a policy trained with reliable guidance brittle at deployment. Our flow-matching analysis bounds the deployment loss by training error, guidance-distribution coverage, and conditional drift, motivating two training principles: covering deployment-time guidance conditions and exposing the policy to temporal staleness. We therefore train a VLA policy with subtask descriptions, affordance regions, and image-space trajectories drawn from annotated, generated, corrupted, and missing guidance, while varying their physical age—the elapsed time from the source observation to policy use. Current observations and action supervision remain aligned. An asynchronously refreshed dependency graph overlaps reasoning and action generation while preserving an explicit and inspectable CoT interface. Controlled evaluations vary guidance reliability and physical age. We evaluate closed-loop success on LIBERO and on training and testing tasks of RoboTwin 2.0, as well as a real-world “desktop-cleaning” task and its variants, demonstrating robustness and generalization on physical robots.</p></div>
   </section>
 
+  <section id="idea" class="section container narrow">
+    <h2>Why Guidance Can Increase Action Error</h2>
+    <p>A subtask description or spatial plan helps an action policy interpret what to do next. During execution, these predictions can be <strong>incorrect, missing, or outdated</strong>. Different fields also refresh at different times: a new subtask may arrive while the geometry still refers to an earlier operation. Training only with clean, synchronized annotations leaves the action policy unprepared for these combinations.</p>
+    <p>The paper analyzes expected squared flow-matching error with square-integrable targets and learned fields. Training and deployment share the distribution of observations, demonstrated actions, noise, and flow time, while the guidance distribution changes. For two fixed learned policies, the comparison is exact:</p>
+    <div class="equation" aria-label="Guided risk minus observation-only risk equals negative information gain plus guided excess risk minus observation-only excess risk">R<sub>guided</sub> − R<sub>obs</sub> = −G + e<sub>guided</sub> − e<sub>obs</sub></div>
+    <p>Here, <strong>G</strong> is the reduction in minimum achievable error from adding guidance; each <strong>e</strong> is a learned policy’s error above its own minimum. Guidance improves the learned policy when its information gain exceeds the additional error of using it.</p>
+    <p>With a finite deployment-to-training coverage coefficient β, the guided deployment excess risk satisfies:</p>
+    <div class="equation" aria-label="Guided deployment excess risk is at most the square of the sum of square root beta times training excess risk and square root conditional drift">e<sub>guided</sub> ≤ (√(β ε<sub>train</sub>) + √Γ)<sup>2</sup></div>
+    <p>The bound connects <strong>training fit</strong> ε<sub>train</sub> (error above the training optimum), <strong>input coverage</strong> β (a bound on the complete input’s deployment-to-training density ratio), and <strong>conditional drift</strong> Γ (the deployment-averaged squared change in the optimal prediction at the same input). At the population training optimum, guided deployment excess risk equals Γ. This motivates training with the predictor’s own outputs, imperfect guidance, and varied physical ages.</p>
+    <p class="caption">Paper Section 3 and Appendix A give the definitions, assumptions, and proofs for this flow-matching analysis.</p>
+  </section>
+
   <section id="method" class="section container">
     <h2>Approach</h2>
     <figure class="paper-figure"><a href="assets/images/method.png" target="_blank" rel="noopener" aria-label="Open full resolution method figure"><img src="assets/images/method.webp" width="2200" height="805" loading="lazy" alt="Method overview: temporal jitter, clean and perturbed guidance, three-stage training, and asynchronous Perceiver–Worker inference"></a><figcaption>Perceiver–Worker framework. Guidance fields use independently sampled earlier source times, and the Worker is trained on a mixture of guidance sources.</figcaption></figure>
     <p>The <strong>Perceiver</strong> predicts structured guidance: memory summarizes observed task progress, subtask describes the current operation and target, affordance identifies object or target regions, and the 2D trajectory gives future end-effector points in image coordinates. The <strong>Worker</strong> generates continuous action chunks from the current camera views, robot state, instruction, and available guidance.</p>
-    <p>We first train the Perceiver on annotated demonstrations, then generate offline guidance using its own predicted history. We train the Worker on annotated, generated, perturbed, and missing guidance while varying each field’s physical age. Current observations and demonstrated action targets remain aligned.</p>
-    <p>At deployment, guidance fields refresh independently in a shared cache. The Worker reads the latest fields and their ages without waiting for outstanding reasoning requests. Our flow-matching analysis connects the effect of guidance to its information gain, the learned policy’s error in using it, training coverage, and conditional drift.</p>
+    <h3>An Explicit, Inspectable CoT Interface</h3>
+    <p>The Perceiver predicts four fields through question–answer tasks with shared model parameters. All queries receive the task instruction. Memory carries task history into subtask prediction; the subtask then conditions the spatial predictions.</p>
+    <div class="table-scroll"><table class="text-table"><caption class="sr-only">Perceiver inputs and outputs for each guidance field</caption><thead><tr><th scope="col">Field</th><th scope="col">Input context</th><th scope="col">Output</th></tr></thead><tbody>
+      <tr><th scope="row">Memory</th><td>Completed-window video + prior memory</td><td>Summary of observed events</td></tr>
+      <tr><th scope="row">Subtask</th><td>Recent video + completed-window memory</td><td>Current operation and target</td></tr>
+      <tr><th scope="row">Affordance</th><td>Current image + available subtask</td><td>Object or target-region boxes</td></tr>
+      <tr><th scope="row">2D trajectory</th><td>Current image + available subtask</td><td>Ordered future end-effector points</td></tr>
+    </tbody></table></div>
+    <p class="caption">Boxes and points use normalized image coordinates. Subtask and field ages enter the Worker as text; boxes and trajectory points are drawn on a copy of the current front-camera image, alongside the original views.</p>
+
+    <h3>Three Stages of Training</h3>
+    <ol class="training-stages">
+      <li><strong>Train the Perceiver.</strong> Annotate demonstration videos and robot data with the four fields, then use supervised fine-tuning on general robot data and the target benchmark. Temporally jittered context and context dropout expose the Perceiver to earlier or missing inputs.</li>
+      <li><strong>Generate deployment-style predictions.</strong> Freeze the adapted Perceiver and run it over training demonstrations using its own predicted history. Each query uses observations and history available by its source time. Store the content, source time, and parsing status alongside the annotations.</li>
+      <li><strong>Train the Worker with mixed guidance and ages.</strong> Independently sample each field’s source and historical time while preserving the current observation and correct action target. Supply each selected field’s physical age.</li>
+    </ol>
+    <div class="table-scroll"><table class="text-table"><caption class="sr-only">Sources of guidance used in downstream Worker training</caption><thead><tr><th scope="col">Source</th><th scope="col">What the Worker receives</th></tr></thead><tbody>
+      <tr><th scope="row">GT</th><td>Annotated guidance from demonstrations</td></tr>
+      <tr><th scope="row">Pred</th><td>The adapted Perceiver’s outputs and actual source times</td></tr>
+      <tr><th scope="row">Noise</th><td>Small perturbations to geometric coordinates</td></tr>
+      <tr><th scope="row">Err</th><td>A subtask from another time or substantially displaced geometry</td></tr>
+      <tr><th scope="row">Missing</th><td>Empty fields through dropout and an initial interval without CoT</td></tr>
+    </tbody></table></div>
+    <p class="caption">Source weights and age ranges are benchmark-specific. Paper Section 4 and Appendix F describe annotation, generation, and training settings.</p>
+
+    <h3>Asynchronous Reasoning and Action</h3>
+    <p>Independent request loops refresh memory, subtask, affordance, and trajectory through a shared vLLM service. Parsed fields and their source times enter a shared cache. An older response cannot replace a result from a newer source.</p>
+    <p>At each action query, the Worker reads the latest available fields and computes their ages from the source observations. It generates actions while outstanding CoT requests continue. <strong>Return time determines availability; source time determines age.</strong> Cached fields grow older until updated, and explicit abstentions clear the corresponding field.</p>
+    <figure class="paper-figure"><img src="assets/images/cot_overlay.webp" width="1700" height="350" loading="lazy" alt="Three head-camera frames showing spatial guidance during pen picking, paper handling, and laptop closing"><figcaption>Rendered guidance from the real-robot paper figures. Affordance boxes and trajectories expose the spatial inputs available to the Worker; green indicates the left arm and red the right arm.</figcaption></figure>
+    <p>In sampled frames from a successful Base trial, subtask ages are 0.5–1.1 s and geometry ages are 1.0–2.1 s. The robot continues using the last accepted guidance through up to eight consecutive rejected Perceiver updates. The appendix reports these observed ages separately from the training settings.</p>
   </section>
 
   <section id="experiments" class="section container">
@@ -53,6 +93,7 @@
     <h3 id="demos">Real-Robot Desktop Cleaning</h3>
     <p class="instruction">“Clean the desktop by putting every item in its place and closing the notebook.”</p>
     <p>We deploy on an AgiBot G2 dual-arm robot. The policy is adapted only on the Base dataset of 866 demonstrations and evaluated directly on changes in appearance, object category, item count, pose, and task progress.</p>
+    <p>The robot uses a head camera and two wrist cameras. Both models share one RTX 5090 GPU. The Worker predicts 14-dimensional end-effector deltas at 30 Hz in 50-step chunks; the robot executes the first 25 steps before the next query. Both our policy and the π₀.₅ baseline are evaluated after 6,000 adaptation updates on the same demonstrations.</p>
     <p class="small">The videos below retain the full recorded timeline and play at 2× source speed. Camera views crop the lower text panel; original recordings remain available below each video. Each video shows one trial, separate from the five-trial mean scores. The Moved recording includes a failed paper subtask.</p>
     <div class="video-grid">
       <figure class="demo">
@@ -96,6 +137,19 @@
     <div class="table-scroll compact-table"><table><caption class="sr-only">Real-robot mean overall task scores</caption><thead><tr><th scope="col">Condition</th><th scope="col">π₀.₅</th><th scope="col">Ours</th></tr></thead><tbody><tr><th scope="row">Base</th><td>40</td><td>95</td></tr><tr><th scope="row">Object</th><td>30</td><td>90</td></tr><tr><th scope="row">Category</th><td>15</td><td>90</td></tr><tr><th scope="row">Multi</th><td>25</td><td>71</td></tr><tr><th scope="row">Moved</th><td>15</td><td>55</td></tr><tr><th scope="row">Laptop done</th><td>46.7</td><td>86.7</td></tr><tr><th scope="row">Paper done</th><td>53.3</td><td>73.3</td></tr></tbody></table></div>
     <p class="caption">Mean overall task scores (%) over five trials per condition. Scores average the applicable subtasks, with partial credit for paper collection in Multi. These are mean subtask scores, not whole-task success rates.</p>
 
+    <h4>Which Subtasks Improve—and Which Remain Difficult?</h4>
+    <div class="table-scroll"><table><caption class="sr-only">Our real-robot subtask scores across seven conditions</caption><thead><tr><th scope="col">Condition</th><th scope="col">Pen</th><th scope="col">Paper</th><th scope="col">Box</th><th scope="col">Laptop</th></tr></thead><tbody>
+      <tr><th scope="row">Base</th><td>100</td><td>100</td><td>80</td><td>100</td></tr>
+      <tr><th scope="row">Object</th><td>80</td><td>100</td><td>80</td><td>100</td></tr>
+      <tr><th scope="row">Category</th><td>80</td><td>100</td><td>80</td><td>100</td></tr>
+      <tr><th scope="row">Multi</th><td>80</td><td>84</td><td>40</td><td>80</td></tr>
+      <tr><th scope="row">Moved</th><td>40</td><td>60</td><td>40</td><td>80</td></tr>
+      <tr><th scope="row">Laptop done</th><td>100</td><td>100</td><td>60</td><td>—</td></tr>
+      <tr><th scope="row">Paper done</th><td>80</td><td>—</td><td>40</td><td>100</td></tr>
+    </tbody></table></div>
+    <p class="caption">Our mean subtask scores (%) over five trials. A dash marks an initially completed subtask excluded from scoring. Goals must remain completed for 2 s; Multi allows partial paper credit.</p>
+    <p>In Base, pen placement and paper collection improve from 0% for π₀.₅ to 100% for our policy; both score 80% on standing the box upright. Category reaches 90% overall after Base-only adaptation. Moved remains the hardest condition at 55% overall, and the subtask breakdown also exposes difficulty with box standing in Multi and Paper done.</p>
+
     <h3>LIBERO Benchmark</h3>
     <div class="table-scroll"><table><caption class="sr-only">LIBERO success rate by suite, compared with two baselines evaluated by the authors</caption><thead><tr><th scope="col">Method</th><th scope="col">Spatial</th><th scope="col">Object</th><th scope="col">Goal</th><th scope="col">Long</th><th scope="col">Mean</th></tr></thead><tbody><tr><th scope="row">π₀.₅</th><td>98.5</td><td>99.0</td><td>97.5</td><td>93.5</td><td>97.1</td></tr><tr><th scope="row">Embodied-R1.5-VLA</th><td>98.3</td><td>99.2</td><td>97.6</td><td>93.9</td><td>97.2</td></tr><tr class="ours"><th scope="row">Ours</th><td>99.2</td><td>100.0</td><td>99.0</td><td>97.8</td><td>99.0</td></tr></tbody></table></div>
     <p class="caption">Success rates (%) across four suites, with 500 rollouts per task. These methods were evaluated by the authors. Our method reaches 99.0% mean success; the paper includes the full comparison and distinguishes author evaluations from reported results.</p>
@@ -104,14 +158,37 @@
     <div class="table-scroll compact-table"><table><caption class="sr-only">RoboTwin success on training and held-out testing tasks</caption><thead><tr><th scope="col">Method</th><th scope="col">Train</th><th scope="col">Test</th></tr></thead><tbody><tr><th scope="row">π₀</th><td>50.88</td><td>12.00</td></tr><tr><th scope="row">π₀.₅ (observation only)</th><td>77.28</td><td>19.48</td></tr><tr><th scope="row">Wall-X</th><td>68.28</td><td>14.88</td></tr><tr><th scope="row">VLA-JEPA</th><td>63.36</td><td>12.68</td></tr><tr class="ours"><th scope="row">Ours</th><td>89.12</td><td>25.04</td></tr></tbody></table></div>
     <p class="caption">Success rates (%) on a fixed split of 25 training and 25 held-out testing tasks, with 100 rollouts per task. All methods are evaluated on the same split. Our method reaches 25.04% success on held-out tasks.</p>
 
+    <h3>What Matters in Training?</h3>
+    <div class="table-scroll"><table><caption class="sr-only">RoboTwin downstream fine-tuning ablations</caption><thead><tr><th scope="col">Fine-tuning variant</th><th scope="col">Train</th><th scope="col">Test</th><th scope="col">Test drop</th></tr></thead><tbody>
+      <tr class="ours"><th scope="row">F: complete recipe</th><td>89.12</td><td>25.04</td><td>—</td></tr>
+      <tr><th scope="row">A1: GT only</th><td>85.92</td><td>21.68</td><td>3.36</td></tr>
+      <tr><th scope="row">A2: no numeric age</th><td>83.04</td><td>17.48</td><td>7.56</td></tr>
+      <tr><th scope="row">A3: no extra age jitter</th><td>85.16</td><td>19.84</td><td>5.20</td></tr>
+      <tr><th scope="row">A4: Pred only</th><td>87.48</td><td>23.56</td><td>1.48</td></tr>
+    </tbody></table></div>
+    <p class="caption">Success rates (%) on RoboTwin 2.0. Changes apply only to downstream fine-tuning; all variants share the general Worker checkpoint, Perceiver, data, and budget. Test drop is the percentage-point decrease from F.</p>
+    <p>Pred-only fine-tuning outperforms GT-only on both splits, while the complete mixture gives the highest success. Removing numeric ages or extra age jitter produces larger Test drops. These comparisons support supplying both each field’s age and delayed examples during fine-tuning.</p>
+
     <h3>Action Error under Guidance Shift</h3>
     <p>On fixed RoboTwin training states, the complete training recipe is less sensitive to wrong guidance and shows a smaller error increase under stale guidance.</p>
-    <div class="guidance-tables"><div><h4>Correct → wrong guidance</h4><div class="table-scroll"><table><caption class="sr-only">Action error under correct and wrong guidance</caption><thead><tr><th scope="col">Recipe</th><th scope="col">Correct</th><th scope="col">Wrong</th><th scope="col">Increase</th></tr></thead><tbody><tr><th scope="row">GT only</th><td>1.97</td><td>2.85</td><td class="bad">+0.88</td></tr><tr><th scope="row">Pred only</th><td>1.95</td><td>2.38</td><td>+0.43</td></tr><tr class="ours"><th scope="row">Complete recipe</th><td>1.96</td><td>1.97</td><td>+0.01</td></tr></tbody></table></div></div><div><h4>Fresh (0.2 s) → stale (3 s)</h4><div class="table-scroll"><table><caption class="sr-only">Action error under fresh and stale guidance</caption><thead><tr><th scope="col">Recipe</th><th scope="col">Fresh</th><th scope="col">Stale</th><th scope="col">Increase</th></tr></thead><tbody><tr><th scope="row">No extra age jitter</th><td>1.71</td><td>2.13</td><td class="bad">+0.42</td></tr><tr class="ours"><th scope="row">Complete recipe</th><td>1.85</td><td>1.96</td><td>+0.11</td></tr></tbody></table></div></div></div>
+    <p>We use the 5,000-update ablation checkpoints and keep observations and sampling noise fixed while replacing all three guidance fields. The metric is root-mean-square action error against demonstration actions.</p>
+    <div class="guidance-tables"><div><h4>Wrong and Missing Guidance</h4><div class="table-scroll"><table><caption class="sr-only">Action error under correct, wrong, and missing guidance</caption><thead><tr><th scope="col">Recipe</th><th scope="col">Correct</th><th scope="col">Wrong</th><th scope="col">Missing</th></tr></thead><tbody><tr><th scope="row">Observation only</th><td>—</td><td>—</td><td>3.10</td></tr><tr><th scope="row">GT only</th><td>1.97</td><td>2.85</td><td>2.64</td></tr><tr><th scope="row">Pred only</th><td>1.95</td><td>2.38</td><td>2.31</td></tr><tr class="ours"><th scope="row">Complete recipe</th><td>1.96</td><td>1.97</td><td>1.99</td></tr></tbody></table></div><p class="caption">25 tasks, 75 fixed states. Wrong guidance raises GT-only error by 0.88 and complete-recipe error by 0.01.</p></div><div><h4>Stale and Missing Guidance</h4><div class="table-scroll"><table><caption class="sr-only">Action error under fresh, stale, and missing guidance</caption><thead><tr><th scope="col">Recipe</th><th scope="col">Fresh</th><th scope="col">Stale</th><th scope="col">Missing</th></tr></thead><tbody><tr><th scope="row">Observation only</th><td>—</td><td>—</td><td>2.27</td></tr><tr><th scope="row">No extra jitter</th><td>1.71</td><td>2.13</td><td>1.92</td></tr><tr class="ours"><th scope="row">Complete recipe</th><td>1.85</td><td>1.96</td><td>1.90</td></tr></tbody></table></div><p class="caption">23 tasks, 77 fixed states. Fresh guidance is 0.2 s old; stale GT guidance is 3 s old and carries its true age.</p></div></div>
     <p class="caption">Action error in ×10⁻² rad (lower is better). The two tests use their respective fixed state sets; compare recipes within each table.</p>
+    <p>The complete recipe keeps error close to the correct-guidance result when guidance is wrong or absent. Temporal jitter reduces the error increase under stale guidance from 0.42 to 0.11, with a tradeoff: the no-extra-jitter variant has lower error under fresh guidance (1.71 versus 1.85).</p>
 
     <h3>Recovery from a Failed Grasp</h3>
     <figure class="paper-figure"><img src="assets/images/recovery_case_10.webp" width="1674" height="418" loading="lazy" alt="Frames from the paper showing a failed tissue grasp, a successful retry, tissue deposit, box standing, and laptop closing"><figcaption>Paper case study. Frames progress across the top row, then the bottom row.</figcaption></figure>
     <p>In the paper’s Base case study, the Worker fails to lift the tissue. The Perceiver sees that the tissue remains on the table and predicts another grasp; the Worker retries and deposits it in the bin. The training data contain no failed-grasp-then-retry sequences. The paper reports this behavior as emerging from the two models’ interaction at deployment.</p>
+    <h3>Repeated Collection with Imperfect Geometry</h3>
+    <figure class="paper-figure"><a href="assets/images/multi_repeat.webp" target="_blank" rel="noopener"><img src="assets/images/multi_repeat.webp" width="1156" height="445" loading="lazy" alt="Three appendix frames with guidance text showing repeated tissue collection despite outdated geometry and an incorrect mouse reference"></a><figcaption>Separate Multi case study from the appendix. Click the figure to read the recorded guidance panel at full resolution.</figcaption></figure>
+    <p>At the first grasp, the subtask asks for the tissue while the geometry is 1.5 s old and conditioned on an earlier subtask referring to a “held mouse” absent from the table. After each deposit, the subtask again requests collection until the paper subtask succeeds. The Worker collects separated pieces while using the observed scene alongside imperfect geometry.</p>
+    <p class="caption">The paper’s grasp-retry and piecewise-collection cases are separate observations. The videos above and the appendix figures document different recorded trials.</p>
+  </section>
+
+  <section id="discussion" class="section container narrow">
+    <h2>Discussion and Future Work</h2>
+    <p>The results support training the action policy for the guidance conditions it encounters during asynchronous execution. Benchmark success, controlled guidance-shift tests, and real-robot trials examine complementary parts of this question. The held-out RoboTwin score of 25.04% and the lower real-robot score under pose changes leave substantial room for improvement.</p>
+    <p>The current system trains and deploys two models. Resource limits prevented joint pretraining of the Perceiver and Worker in one model. The paper proposes future work on a mixture-of-transformers architecture combining a vision–language model with an action expert and joint pretraining of both components.</p>
   </section>
 
   <section id="resources" class="section container narrow">

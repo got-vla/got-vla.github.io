@@ -57,6 +57,13 @@ tbody tr:last-child th, tbody tr:last-child td { border-bottom: 2px solid #555; 
 .guidance-tables h4 { font-size: 16px; }
 .guidance-tables table { font-size: 13px; }
 .guidance-tables th, .guidance-tables td { padding: 9px 8px; }
+.text-table { text-align: left; }
+.text-table th, .text-table td { white-space: normal; vertical-align: top; }
+.text-table th:first-child { width: 18%; }
+.training-stages { padding-left: 24px; margin: 0 0 25px; }
+.training-stages li { padding-left: 4px; margin-bottom: 14px; }
+.equation { text-align: center; margin: 24px 0; padding: 12px 0; font: 21px/1.6 Georgia, serif; color: #363636; overflow-wrap: anywhere; }
+.equation sub, .equation sup { font-size: .7em; }
 .resource-links { text-align: center; }
 pre { padding: 20px; background: #f5f5f5; font: 13px/1.65 Consolas, monospace; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 20px 0 10px; }
 #copy-citation { font: inherit; font-size: 12px; color: #555; padding: 5px 10px; background: #fff; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; }
