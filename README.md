@@ -4,13 +4,13 @@ Project website for **Guidance under Shift: Deployment-Aligned Semantic Interfac
 
 **Website:** https://simaqie.github.io/got-vla/
 
-The manuscript currently lists Anonymous Authors. This repository contains the static project page, figures, compiled paper with appendix, and real-robot demonstration videos. It does not contain the training implementation.
+The manuscript currently lists Anonymous Authors. This repository contains the static project page, figures, compiled paper with appendix, and real-robot demonstration videos. The page follows a simple, linear paper layout: title, teaser, abstract, approach, experiments, and resources. It does not contain the training implementation.
 
 ## Local preview
 
 Run `python -m http.server 8765` from this directory, then open http://localhost:8765/.
 
-No build step, external JavaScript libraries, or remotely hosted fonts are required. GitHub Pages serves the root of the `main` branch.
+No build step, external JavaScript libraries, or remotely hosted fonts are required. GitHub Pages serves the root of the `main` branch. For an independent team-owned address, the repository must be transferred to the `got-vla` organization and named `got-vla.github.io`; its final URL will be https://got-vla.github.io/. The currently listed personal address is the initial preview deployment.
 
 ## Content sources
 
@@ -22,7 +22,7 @@ Where supplementary README numbers or descriptions differ from the current manus
 
 ## Video processing
 
-`s1.mp4` through `s7.mp4` preserve the entire recorded timeline, crop the top 640 × 400 head-camera region, and are encoded at 2× source playback speed in H.264 MP4 with fast-start metadata. No action interval is omitted. The viewer can play at 1× or 2× and switch to the original guidance view. Category has no guidance overlay.
+`s1.mp4` through `s7.mp4` preserve the entire recorded timeline, crop the top 640 × 400 head-camera region, and are encoded at 2× source playback speed in H.264 MP4 with fast-start metadata. No action interval is omitted. All seven demonstrations appear directly on the page with native playback controls. Each video links to its original recording with the guidance panel. Category has no guidance overlay.
 
 `s1-full.mp4` through `s7-full.mp4` are byte-identical copies of the provided recordings. See [the processing manifest](assets/videos/manifest.json) for filenames, durations, and transformations.
 
@@ -36,7 +36,7 @@ The Moved recording retains its failed paper subtask. All seven individual recor
 
 ## Design references
 
-The information hierarchy was informed by [CoT-VLA](https://cot-vla.github.io/) and [Embodied CoT](https://embodied-cot.github.io/). The page's HTML, CSS, and interactions were authored for this project; no template code was copied.
+The revised layout follows [CoT-VLA](https://cot-vla.github.io/): a white background, centered sans-serif title, simple paper links, sequential content sections, and directly displayed video demonstrations. The page's HTML, CSS, and interactions were authored for this project; no template code was copied.
 
 ## Release status
 
